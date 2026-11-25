@@ -17,7 +17,7 @@ This module detects changes in input distribution.
 It does NOT determine whether a product has a defect.
 """
 
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from typing import Optional
 import numpy as np
 
@@ -27,8 +27,20 @@ import numpy as np
 # --------------------------------------------------
 
 MIN_TRAIN_IMAGES = 5
-MIN_SIGMA = 1e-6
 MIN_CAUTION_Z = 3.0
+STATISTIC_SCALE_FLOORS = {
+    "brightness": 2.0,
+    "contrast": 2.0,
+    "sharpness": 1.0,
+    "noise": 0.5,
+    "colour_cast": 2.0,
+}
+MIN_IMAGE_SIDE = 128
+MIN_BRIGHTNESS = 12.0
+MAX_BRIGHTNESS = 245.0
+MIN_CONTRAST = 4.0
+MIN_SHARPNESS = 0.1
+MAX_NOISE = 60.0
 
 MEDIUM_SHIFT_RATIO = 1.0
 LOW_SHIFT_RATIO = 2.0
@@ -48,6 +60,8 @@ class ShiftResult:
     statistics: dict
     feature_distance: Optional[float]
     recommendation: str
+    statistic_z_scores: dict = field(default_factory=dict)
+    quality_issues: list = field(default_factory=list)
 
     def to_dict(self):
         return asdict(self)
@@ -198,8 +212,14 @@ def pool_patch_features(feature_map, channel_first=False):
 
 class ShiftDetector:
 
-    def __init__(self):
+    def __init__(self, caution_z=MIN_CAUTION_Z, scale_floors=None):
+        if not np.isfinite(caution_z) or caution_z <= 0:
+            raise ValueError("caution_z must be a positive finite number.")
         self.fitted = False
+        self._caution_z_setting = float(caution_z)
+        self.scale_floors = dict(STATISTIC_SCALE_FLOORS)
+        if scale_floors:
+            self.scale_floors.update(scale_floors)
 
         self.reference_median = None
         self.reference_mad = None
@@ -247,13 +267,11 @@ class ShiftDetector:
         )
 
         # Convert MAD into robust standard deviation
-        self.reference_mad = np.maximum(
-            self.reference_mad * 1.4826,
-            MIN_SIGMA
-        )
+        robust_scale = self.reference_mad * 1.4826
+        floors = np.array([self.scale_floors[key] for key in keys])
+        self.reference_mad = np.maximum(robust_scale, floors)
 
-        # Conservative threshold for image statistics
-        self.caution_z = MIN_CAUTION_Z
+        self.caution_z = self._caution_z_setting
 
         if train_features is not None:
             self._fit_features(train_features)
@@ -331,21 +349,35 @@ class ShiftDetector:
             )
 
         current = image_statistics(image)
+        image_array = np.asarray(image)
+        quality_issues = []
+
+        if min(image_array.shape[:2]) < MIN_IMAGE_SIDE:
+            quality_issues.append(f"image_side_below_{MIN_IMAGE_SIDE}px")
+        if current["brightness"] < MIN_BRIGHTNESS:
+            quality_issues.append("severely_underexposed")
+        elif current["brightness"] > MAX_BRIGHTNESS:
+            quality_issues.append("severely_overexposed")
+        if current["contrast"] < MIN_CONTRAST:
+            quality_issues.append("extremely_low_contrast")
+        if current["sharpness"] < MIN_SHARPNESS:
+            quality_issues.append("extreme_blur_or_focus_failure")
+        if current["noise"] > MAX_NOISE:
+            quality_issues.append("extreme_image_noise")
 
         z_scores = {}
 
         for index, key in enumerate(self.keys):
-
             difference = abs(
                 current[key] - self.reference_median[index]
             )
-
             z_scores[key] = float(
                 difference / self.reference_mad[index]
             )
 
         max_z = max(z_scores.values())
 
+        # Keep the individual deviations for transparent reporting.
         reasons = [
             key
             for key, value in z_scores.items()
@@ -355,7 +387,6 @@ class ShiftDetector:
         feature_distance = None
 
         if features is not None:
-
             if self.feature_mean is None:
                 raise ValueError(
                     "Detector was not fitted with PatchCore features."
@@ -381,15 +412,36 @@ class ShiftDetector:
             if feature_distance > self.feature_threshold:
                 reasons.append("patchcore_features")
 
-        shifted = len(reasons) > 0
+        # A single moderate statistical deviation is treated as caution,
+        # not automatically as a major shift. Strong deviations,
+        # multiple simultaneous deviations, feature shift, or actual
+        # image-quality failures still trigger the shift gate.
+        statistical_reasons = [
+            key for key in reasons if key != "patchcore_features"
+        ]
+
+        strong_statistical_shift = any(
+            value >= self.caution_z * LOW_SHIFT_RATIO
+            for value in z_scores.values()
+        )
+
+        multiple_statistical_shifts = len(statistical_reasons) >= 2
+        feature_shift = "patchcore_features" in reasons
+
+        shifted = bool(
+            strong_statistical_shift
+            or multiple_statistical_shifts
+            or feature_shift
+            or quality_issues
+        )
 
         # Reliability is a heuristic, not a calibrated probability.
-        if max_z < self.caution_z * MEDIUM_SHIFT_RATIO:
+        # One moderate deviation can lower reliability to Medium,
+        # but does not by itself force manual review.
+        if max_z < self.caution_z:
             reliability = "High"
-
         elif max_z < self.caution_z * LOW_SHIFT_RATIO:
             reliability = "Medium"
-
         else:
             reliability = "Low"
 
@@ -401,7 +453,13 @@ class ShiftDetector:
             )
         )
 
-        if shifted:
+        if quality_issues:
+            recommendation = (
+                "Image quality is outside the configured operating limits. "
+                "Retake or correct the image before automated disposition."
+            )
+
+        elif shifted:
             recommendation = (
                 "Review image conditions and consider recalibration "
                 "using verified normal images."
@@ -421,7 +479,9 @@ class ShiftDetector:
             reasons=reasons,
             statistics=current,
             feature_distance=feature_distance,
-            recommendation=recommendation
+            recommendation=recommendation,
+            statistic_z_scores=z_scores,
+            quality_issues=quality_issues,
         )
 
     # ----------------------------------------------
@@ -439,6 +499,7 @@ class ShiftDetector:
         self.feature_mean = None
         self.feature_inv_cov = None
         self.feature_threshold = None
+        self.keys = None
 
         return True
 

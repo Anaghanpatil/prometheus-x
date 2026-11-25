@@ -5,8 +5,9 @@ Takes the anomaly heatmap produced by the detector (PatchCore) and a decision
 threshold, and answers: "how serious is this defect?"
 
 Severity combines two things:
-  1. AREA      - how much of the image is defective (defect area %)
-  2. STRENGTH  - how far above the threshold the worst spot is (peak / threshold)
+    1. AREA      - how much of the image is defective (defect area %)
+    2. STRENGTH  - peak and mean anomaly relative to the pixel threshold
+    3. GEOMETRY  - connected-region count and their spatial extent
 
 Output level: None / Low / Medium / High
 
@@ -31,8 +32,13 @@ except ImportError:  # graceful fallback
 # --------------------------------------------------------------------------- #
 AREA_CAP_PCT = 5.0       # defect covering >= 5% of image => area component = 1.0
 RATIO_CAP = 2.0          # peak score >= 2x threshold    => strength component = 1.0
-W_AREA = 0.5             # weight of area in final severity index
-W_STRENGTH = 0.5         # weight of strength in final severity index
+W_AREA = 0.35            # weight of affected area
+W_STRENGTH = 0.30        # weight of peak anomaly strength
+W_MEAN_STRENGTH = 0.15   # weight of mean anomaly strength in regions
+W_REGION_COUNT = 0.10    # weight of connected-region count
+W_SPATIAL_EXTENT = 0.10  # weight of the total defect bounding extent
+REGION_COUNT_CAP = 5     # region component saturates at this many blobs
+SPATIAL_EXTENT_CAP_PCT = 50.0
 LOW_MAX = 0.33           # index < 0.33  => Low
 MEDIUM_MAX = 0.66        # index < 0.66  => Medium, otherwise High
 MIN_REGION_PIXELS = 1    # ignore connected regions smaller than this
@@ -49,6 +55,9 @@ class SeverityResult:
     num_regions: int                 # number of separate defect blobs
     bboxes: List[Tuple[int, int, int, int]] = field(default_factory=list)
     # each bbox = (x_min, y_min, x_max, y_max)
+    region_sizes_pct: List[float] = field(default_factory=list)
+    region_centroids: List[Tuple[float, float]] = field(default_factory=list)
+    spatial_extent_pct: float = 0.0
     mask: np.ndarray = None          # boolean defect mask, same shape as map
 
     def to_dict(self):
@@ -75,30 +84,36 @@ def _validate_map(anomaly_map) -> np.ndarray:
 
 
 def _find_regions(mask: np.ndarray):
-    """Return (num_regions, bboxes, cleaned_mask)."""
+    """Return count, boxes, pixel areas, centroids, and cleaned mask."""
     if not mask.any():
-        return 0, [], mask
+        return 0, [], [], [], mask
 
     if _HAS_SCIPY:
-        labeled, n = ndimage.label(mask)
-        bboxes, keep = [], np.zeros_like(mask)
-        count = 0
+        labeled, _ = ndimage.label(mask)
+        bboxes, region_sizes, centroids = [], [], []
+        keep = np.zeros_like(mask)
         slices = ndimage.find_objects(labeled)
         for i, sl in enumerate(slices, start=1):
             region = labeled[sl] == i
             if region.sum() < MIN_REGION_PIXELS:
                 continue
-            count += 1
             keep[sl] |= region
             y0, y1 = sl[0].start, sl[0].stop - 1
             x0, x1 = sl[1].start, sl[1].stop - 1
             bboxes.append((int(x0), int(y0), int(x1), int(y1)))
-        return count, bboxes, keep
+            local_y, local_x = np.where(region)
+            region_sizes.append(int(region.sum()))
+            centroids.append((
+                round(float(x0 + local_x.mean()), 2),
+                round(float(y0 + local_y.mean()), 2),
+            ))
+        return len(bboxes), bboxes, region_sizes, centroids, keep
 
     # fallback: one box around all defect pixels
     ys, xs = np.where(mask)
     bbox = (int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max()))
-    return 1, [bbox], mask
+    centroid = (round(float(xs.mean()), 2), round(float(ys.mean()), 2))
+    return 1, [bbox], [int(mask.sum())], [centroid], mask
 
 
 def estimate_severity(anomaly_map, threshold: float) -> SeverityResult:
@@ -124,25 +139,44 @@ def estimate_severity(anomaly_map, threshold: float) -> SeverityResult:
     peak = float(amap.max())
 
     raw_mask = amap > threshold
-    num_regions, bboxes, mask = _find_regions(raw_mask)
+    num_regions, bboxes, region_sizes, centroids, mask = _find_regions(raw_mask)
 
     # nothing above threshold -> no defect
     if num_regions == 0:
         return SeverityResult(
             level="None", index=0.0, area_pct=0.0, peak_score=peak,
             mean_defect_score=0.0, strength_ratio=peak / threshold,
-            num_regions=0, bboxes=[], mask=np.zeros_like(raw_mask),
+            num_regions=0,
+            bboxes=[],
+            region_sizes_pct=[],
+            region_centroids=[],
+            spatial_extent_pct=0.0,
+            mask=np.zeros_like(raw_mask),
         )
 
     area_pct = 100.0 * float(mask.sum()) / mask.size
     mean_defect = float(amap[mask].mean())
     ratio = peak / threshold
+    mean_ratio = mean_defect / threshold
+
+    ys, xs = np.where(mask)
+    extent_pixels = (int(xs.max()) - int(xs.min()) + 1) * (int(ys.max()) - int(ys.min()) + 1)
+    spatial_extent_pct = 100.0 * extent_pixels / mask.size
 
     # components, each clipped to [0, 1]
     area_component = min(area_pct / AREA_CAP_PCT, 1.0)
     strength_component = float(np.clip((ratio - 1.0) / (RATIO_CAP - 1.0), 0.0, 1.0))
+    mean_component = float(np.clip((mean_ratio - 1.0) / (RATIO_CAP - 1.0), 0.0, 1.0))
+    region_component = min(num_regions / REGION_COUNT_CAP, 1.0)
+    extent_component = min(spatial_extent_pct / SPATIAL_EXTENT_CAP_PCT, 1.0)
 
-    index = W_AREA * area_component + W_STRENGTH * strength_component
+    index = (
+        W_AREA * area_component
+        + W_STRENGTH * strength_component
+        + W_MEAN_STRENGTH * mean_component
+        + W_REGION_COUNT * region_component
+        + W_SPATIAL_EXTENT * extent_component
+    )
     index = float(np.clip(index, 0.0, 1.0))
 
     if index < LOW_MAX:
@@ -161,6 +195,9 @@ def estimate_severity(anomaly_map, threshold: float) -> SeverityResult:
         strength_ratio=round(ratio, 4),
         num_regions=num_regions,
         bboxes=bboxes,
+        region_sizes_pct=[round(100.0 * size / mask.size, 4) for size in region_sizes],
+        region_centroids=centroids,
+        spatial_extent_pct=round(spatial_extent_pct, 4),
         mask=mask,
     )
 

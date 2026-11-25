@@ -81,8 +81,8 @@ def format_score(score: Optional[float]) -> str:
 def verdict_from_score(score: float, threshold: float = 0.5) -> str:
     """
     Map a normalised anomaly score to a verdict string.
-    NOTE: This is a simple threshold rule — the actual decision should
-    come from the AI model's calibrated output (Person 2's calibration.py).
+    NOTE: This simple threshold rule is a fallback. Prefer the empirical
+    verdict from src.calibration when normal reference scores are available.
     """
     if score < threshold * 0.6:
         return "Normal"
@@ -146,8 +146,8 @@ def calculate_reliability(confidence: Optional[float], shift_detected: bool) -> 
     Estimate result reliability from calibrated confidence and shift status.
     Returns 'High', 'Medium', or 'Low'.
 
-    This is a heuristic fallback. Person 2's backend functions should
-    provide the authoritative reliability value when available.
+    This is a heuristic fallback. Prefer the reliability assessment from
+    src.shift when its normal-image reference is available.
     """
     if confidence is None:
         return "Low"
@@ -167,6 +167,7 @@ VERDICT_COLOURS = {
     "Normal":            ("#10b981", "verdict-normal"),
     "Anomaly Detected":  ("#ef4444", "verdict-anomaly"),
     "Uncertain":         ("#f59e0b", "verdict-uncertain"),
+    "Manual Review Required": ("#f59e0b", "verdict-review"),
     "Model Not Available": ("#475569", "verdict-unavail"),
 }
 

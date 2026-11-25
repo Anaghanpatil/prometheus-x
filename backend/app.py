@@ -13,11 +13,11 @@ import sys
 BACKEND_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = BACKEND_DIR.parent
 
-# Add backend folder to Python import path
-if str(BACKEND_DIR) not in sys.path:
-    sys.path.insert(0, str(BACKEND_DIR))
+# Keep both `python -m backend.app` and direct script execution working.
+if str(PROJECT_DIR) not in sys.path:
+    sys.path.insert(0, str(PROJECT_DIR))
 
-from ai.patchcore_service import inspect_image
+from backend.ai.patchcore_service import inspect_image
 
 
 # --------------------------------------------------

@@ -185,6 +185,7 @@ header    { visibility: hidden; }
 .verdict-normal    { color: var(--green);  border-color: rgba(16,185,129,0.4); background: rgba(16,185,129,0.08); }
 .verdict-anomaly   { color: var(--red);    border-color: rgba(239,68,68,0.4);  background: rgba(239,68,68,0.08);  }
 .verdict-uncertain { color: var(--amber);  border-color: rgba(245,158,11,0.4); background: rgba(245,158,11,0.08); }
+.verdict-review    { color: var(--amber);  border-color: rgba(245,158,11,0.6); background: rgba(245,158,11,0.14); }
 .verdict-unavail   { color: var(--text-muted); border-color: var(--border-subtle); background: rgba(71,85,105,0.08); }
 
 .verdict-badge {

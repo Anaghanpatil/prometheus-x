@@ -33,15 +33,15 @@ app/
 | Image upload (JPG/JPEG/PNG) | ✅ Complete |
 | Product category dropdown | ✅ Complete |
 | Sensitivity slider | ✅ Complete |
-| AI Model integration adapter | 🔌 Placeholder (Person 1) |
-| Anomaly heatmap display | 🔌 Awaiting model |
-| Defect mask display | 🔌 Awaiting model |
+| AI Model integration | PatchCore service in `backend/ai/patchcore_service.py` |
+| Anomaly heatmap and overlay | Saved and displayed from PatchCore inference |
+| Defect mask display | Derived from calibrated anomaly-map threshold |
 | Verdict display | ✅ Complete |
 | Anomaly score display | ✅ Complete |
-| Severity integration | 🔌 Placeholder (Person 2) |
-| Calibrated confidence | 🔌 Placeholder (Person 2) |
-| Distribution shift warning | 🔌 Placeholder (Person 2) |
-| Reliability display | ✅ Complete (heuristic fallback) |
+| Severity integration | `src/severity.py` |
+| Score calibration | `src/calibration.py`, using held-out `dataset/bottle/test/good` scores |
+| Distribution shift warning | `src/shift.py`, using normal training images |
+| Reliability display | Heuristic shift assessment |
 | Recommended action | ✅ Complete |
 | Inspection history (session) | ✅ Complete |
 | Download inspection log | ✅ Complete |
@@ -62,46 +62,41 @@ app/
 
 ## Running Locally
 
-```bash
-# From the project root
-pip install -r requirements.txt
-streamlit run app/streamlit_app.py
+```bat
+REM Run from the project root in CMD
+.venv\Scripts\activate.bat
+python -m streamlit run app/streamlit_app.py
 ```
 
 The app opens at `http://localhost:8501`.
 
 ---
 
-## Integrating the AI Model (Person 1)
+## Dataset Evaluation
 
-1. Train PatchCore using Anomalib on MVTec-AD (Bottle category first).
-2. Open `ai-model/predict.py`.
-3. Implement `_load_model(category)` to load your saved checkpoint.
-4. Fill in the real inference code inside `predict()`.
-5. Set `MODEL_AVAILABLE = True` at the top of the file.
-6. The application immediately picks up real predictions — no other changes needed.
+Run all 209 normal training images (reference/training data, not independent test data):
 
-**Expected interface:**
-```python
-score, heatmap, mask = predict(image, category="Bottle", threshold=0.5)
-# score   : float          — raw anomaly score
-# heatmap : np.ndarray     — shape (H, W), float32, values 0–1
-# mask    : np.ndarray     — shape (H, W), uint8, 0 or 255
+```bat
+python -m backend.ai.batch_test --split train
 ```
 
----
+Run all 83 labeled test images separately:
 
-## Integrating the Backend (Person 2)
+```bat
+python -m backend.ai.batch_test --split test
+```
 
-Open each file in `backend/` and implement the function body, then set the `*_AVAILABLE` flag to `True`.
+Run the labeled synthetic shift experiment:
 
-| File | Function | Flag |
-|---|---|---|
-| `backend/severity.py` | `estimate_severity(heatmap, threshold)` | `SEVERITY_AVAILABLE` |
-| `backend/calibration.py` | `calibrate_score(score)` | `CALIBRATION_AVAILABLE` |
-| `backend/shift.py` | `detect_shift(image)` | `SHIFT_AVAILABLE` |
+```bat
+python -m backend.ai.batch_test --shift-experiment
+```
 
-Do **not** change the function signatures without coordinating with Person 3.
+The 83-image evaluation keeps the 209 PatchCore training images out of calibration and test metrics. It calibrates defects using the 20 held-out `test/good` images and uses leave-one-out calibration for each normal test image. Actual MVTec ground-truth masks are matched by category and filename.
+
+Reports are written under `backend/ai/outputs/batch_<split>/`. The test report includes per-image decisions, calibrated thresholds, severity, reliability, masks, bounding boxes, inference time, CSV/JSON summaries, image-level ROC/PR metrics, and pixel AUROC/AP/Dice/IoU. Pixel AUROC/AP are measured on resized maps to bound CPU memory; Dice/IoU use full-resolution masks. PRO/AUPRO is not reported because the repository has no validated implementation.
+
+The training run is a separate training-set inspection only. Its scores must not be presented as independent test results. Calibration is empirical, based on a 20-image held-out normal sample, and is not a probability guarantee. Synthetic shift results are not evidence of real production-domain robustness.
 
 ---
 
@@ -128,8 +123,10 @@ app_file: app/streamlit_app.py
 
 - History is session-based only; it clears on browser refresh.
 - Feedback does not trigger model retraining.
-- Only the **Bottle** category has a model slot; other categories show an unsupported notice.
-- Real predictions require Person 1's model and Person 2's backend to be integrated.
+- Only the **Bottle** category is supported by the existing checkpoint.
+- The held-out normal calibration set contains 20 images; uncertainty in tail thresholds is therefore material.
+- No external-image dataset is included. Uploaded external images are individual demonstrations, not open-set generalization evidence.
+- Pixel localization metrics are available for the provided defective test images with ground-truth masks.
 - Large model weights must be managed separately (HF Hub / LFS) — not stored in the GitHub repository.
 
 ---

@@ -3,11 +3,10 @@ PROMETHEUS-X — Reusable UI Components
 All Streamlit + HTML rendering helpers live here to keep streamlit_app.py clean.
 """
 
-import datetime
 import streamlit as st
 import numpy as np
 from PIL import Image
-from typing import Optional, Dict, Any
+from typing import Optional, Dict
 
 from app.utils import (
     VERDICT_COLOURS,
@@ -47,7 +46,7 @@ def model_status_badge(model_ready: bool, backend_ready: bool):
     m_col, b_col = "status-green" if model_ready else "status-red", \
                    "status-green" if backend_ready else "status-amber"
     m_txt = "AI Model: Connected" if model_ready else "AI Model: Not Connected"
-    b_txt = "Backend: Connected"  if backend_ready else "Backend: Placeholder"
+    b_txt = "Backend: Connected"  if backend_ready else "Backend: Unavailable"
 
     st.sidebar.markdown(f"""
     <div style="margin-bottom:0.3rem;">
@@ -65,20 +64,20 @@ def model_status_badge(model_ready: bool, backend_ready: bool):
 
 def render_uploaded_image(image: Image.Image, label: str = "Uploaded Image"):
     st.markdown(f'<div class="px-card-title">{label}</div>', unsafe_allow_html=True)
-    st.image(image, use_container_width=True)
+    st.image(image, width="stretch")
     w, h = image.size
     st.caption(f"Dimensions: {w} × {h} px  |  Mode: {image.mode}")
 
 
-def render_heatmap(heatmap: Optional[np.ndarray]):
+def render_heatmap(heatmap: Optional[np.ndarray | str]):
     """Display an anomaly heatmap returned by the AI model."""
     st.markdown('<div class="px-card-title">Anomaly Heatmap</div>', unsafe_allow_html=True)
     if heatmap is not None:
-        st.image(heatmap, use_container_width=True, clamp=True)
+        st.image(heatmap, width="stretch", clamp=True)
     else:
         st.markdown("""
         <div class="placeholder-banner">
-            Heatmap not available — awaiting AI model integration (Person 1).
+            Heatmap unavailable — verify the model output and checkpoint.
         </div>""", unsafe_allow_html=True)
 
 
@@ -86,22 +85,23 @@ def render_mask(mask: Optional[np.ndarray]):
     """Display the binary defect mask returned by the AI model."""
     st.markdown('<div class="px-card-title">Defect Mask</div>', unsafe_allow_html=True)
     if mask is not None:
-        st.image(mask, use_container_width=True, clamp=True)
+        st.image(mask, width="stretch", clamp=True)
     else:
         st.markdown("""
         <div class="placeholder-banner">
-            Defect mask not available — awaiting AI model integration (Person 1).
+            Defect mask unavailable — run an inspection with a valid anomaly map.
         </div>""", unsafe_allow_html=True)
 
 
 # ─── Verdict Banner ───────────────────────────────────────────────────────────
 
 def render_verdict(verdict: str):
-    colour, css_class = VERDICT_COLOURS.get(verdict, ("#475569", "verdict-unavail"))
+    _, css_class = VERDICT_COLOURS.get(verdict, ("#475569", "verdict-unavail"))
     icons = {
         "Normal":             "✓",
         "Anomaly Detected":   "✗",
         "Uncertain":          "?",
+        "Manual Review Required": "!",
         "Model Not Available":"—",
     }
     icon = icons.get(verdict, "—")
@@ -142,9 +142,9 @@ def render_metrics(
             <div class="metric-unit">Defect area estimate</div>
         </div>
         <div class="metric-tile">
-            <div class="metric-label">Confidence</div>
+            <div class="metric-label">Calibration Signal</div>
             <div class="metric-value" style="color:#60a5fa;">{conf_txt}</div>
-            <div class="metric-unit">Calibrated score</div>
+            <div class="metric-unit">Heuristic, not probability</div>
         </div>
         <div class="metric-tile">
             <div class="metric-label">Reliability</div>
@@ -187,12 +187,10 @@ def render_model_unavailable():
     st.markdown("""
     <div class="placeholder-banner" style="padding:2rem;">
         <div style="font-size:1.1rem;font-weight:600;margin-bottom:0.5rem;">
-            AI Model Not Connected
+            PatchCore Model Unavailable
         </div>
         <div style="font-size:0.84rem;color:#94a3b8;line-height:1.6;">
-            This is an interface preview.<br>
-            The PatchCore anomaly detection model (Person 1) has not been integrated yet.<br>
-            Upload an image to explore the UI; real predictions will appear after integration.
+            Check that the existing checkpoint and project virtual environment are available.
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -220,7 +218,7 @@ def render_history_table(history: list):
             "Reliability": item.get("reliability", ""),
         })
 
-    st.dataframe(rows, use_container_width=True, hide_index=True)
+    st.dataframe(rows, width="stretch", hide_index=True)
 
 
 # ─── Feedback Form ────────────────────────────────────────────────────────────

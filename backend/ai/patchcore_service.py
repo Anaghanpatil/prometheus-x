@@ -21,13 +21,28 @@ OUTPUT_FOLDER = (
     PROJECT_ROOT / "backend" / "ai" / "outputs"
 )
 
+_MODEL = None
+_ENGINE = None
+_CHECKPOINT_LOADED = False
 
-def inspect_image(image_path):
+
+def _get_predictor():
+    """Create one CPU predictor and restore the trained checkpoint once."""
+    global _MODEL, _ENGINE
+
+    if _MODEL is None:
+        _MODEL = Patchcore()
+        _ENGINE = Engine(accelerator="cpu", devices=1, logger=False)
+
+    return _MODEL, _ENGINE
+
+
+def inspect_image(image_path, output_folder=None):
     """
     Inspect an uploaded image using the trained PatchCore model.
 
     Returns:
-        Dictionary containing anomaly score, label,
+        Dictionary containing image name, anomaly score, label, anomaly map,
         heatmap path, and overlay path.
     """
 
@@ -43,11 +58,10 @@ def inspect_image(image_path):
             f"Image not found: {image_path}"
         )
 
-    OUTPUT_FOLDER.mkdir(parents=True, exist_ok=True)
+    output_folder = Path(output_folder) if output_folder else OUTPUT_FOLDER
+    output_folder.mkdir(parents=True, exist_ok=True)
 
-    # Load model and prediction engine
-    model = Patchcore()
-    engine = Engine()
+    model, engine = _get_predictor()
 
     # Prepare uploaded image
     dataset = PredictDataset(
@@ -56,11 +70,13 @@ def inspect_image(image_path):
     )
 
     # Run AI prediction
+    global _CHECKPOINT_LOADED
     predictions = engine.predict(
         model=model,
         dataset=dataset,
-        ckpt_path=str(CHECKPOINT_PATH),
+        ckpt_path=str(CHECKPOINT_PATH) if not _CHECKPOINT_LOADED else None,
     )
+    _CHECKPOINT_LOADED = True
 
     if not predictions:
         raise RuntimeError("PatchCore returned no prediction.")
@@ -87,42 +103,32 @@ def inspect_image(image_path):
     # Convert anomaly map to NumPy
     anomaly_map = torch.as_tensor(
         prediction.anomaly_map
-    ).squeeze().detach().cpu().numpy()
+    ).squeeze().detach().cpu().numpy().astype(np.float32)
+    anomaly_map = np.nan_to_num(anomaly_map, nan=0.0, posinf=0.0, neginf=0.0)
+    if anomaly_map.ndim != 2:
+        raise RuntimeError(
+            f"Expected a 2-D anomaly map, got shape {anomaly_map.shape}."
+        )
 
-    # Convert anomaly map into an image
-    heatmap_image = Image.fromarray(
-        (anomaly_map * 255)
-        .clip(0, 255)
-        .astype(np.uint8)
+    heatmap_image = Image.fromarray(anomaly_map, mode="F")
+    heatmap_array = np.asarray(
+        heatmap_image.resize(original_image.size, Image.Resampling.BILINEAR),
+        dtype=np.float32,
     )
-
-    heatmap_image = heatmap_image.resize(
-        original_image.size,
-        Image.Resampling.BILINEAR,
-    )
-
-    heatmap_array = np.array(heatmap_image)
 
     # Output filenames
     image_name = image_path.stem
 
     heatmap_path = (
-        OUTPUT_FOLDER / f"{image_name}_heatmap.png"
+        output_folder / f"{image_name}_heatmap.png"
     )
 
     overlay_path = (
-        OUTPUT_FOLDER / f"{image_name}_overlay.png"
+        output_folder / f"{image_name}_overlay.png"
     )
 
     # Save heatmap
-    plt.figure(figsize=(8, 6))
-    plt.imshow(heatmap_array, cmap="jet")
-    plt.colorbar(label="Anomaly intensity")
-    plt.title("PatchCore Defect Heatmap")
-    plt.axis("off")
-    plt.tight_layout()
-    plt.savefig(heatmap_path, dpi=150)
-    plt.close()
+    plt.imsave(heatmap_path, heatmap_array, cmap="jet")
 
     # Save overlay
     plt.figure(figsize=(8, 6))
@@ -138,6 +144,7 @@ def inspect_image(image_path):
         "image_name": image_path.name,
         "anomaly_score": score,
         "is_anomaly": is_anomaly,
+        "anomaly_map": heatmap_array.tolist(),
         "heatmap_path": str(heatmap_path),
         "overlay_path": str(overlay_path),
     }

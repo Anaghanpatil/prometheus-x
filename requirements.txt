@@ -6,7 +6,7 @@ torch==2.15.0+cpu
 torchvision==0.29.2+cpu
 lightning==2.6.6
 pytorch-lightning==2.6.6
-numpy==2.5.4
+numpy==2.2.6
 pillow==13.0.0
 opencv-python-headless==5.1.0.95
 scikit-learn==1.9.1

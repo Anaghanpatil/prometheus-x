@@ -164,22 +164,22 @@ def calculate_reliability(confidence: Optional[float], shift_detected: bool) -> 
 # ─── Colour Helpers ───────────────────────────────────────────────────────────
 
 VERDICT_COLOURS = {
-    "Normal":            ("#10b981", "verdict-normal"),
-    "Anomaly Detected":  ("#ef4444", "verdict-anomaly"),
-    "Uncertain":         ("#f59e0b", "verdict-uncertain"),
-    "Manual Review Required": ("#f59e0b", "verdict-review"),
+    "Normal":            ("#15803D", "verdict-normal"),
+    "Anomaly Detected":  ("#B91C1C", "verdict-anomaly"),
+    "Uncertain":         ("#B45309", "verdict-uncertain"),
+    "Manual Review Required": ("#B45309", "verdict-review"),
     "Model Not Available": ("#475569", "verdict-unavail"),
 }
 
 SEVERITY_COLOURS = {
-    "High":   "#ef4444",
-    "Medium": "#f59e0b",
-    "Low":    "#10b981",
+    "High":   "#B91C1C",
+    "Medium": "#B45309",
+    "Low":    "#15803D",
     "None":   "#475569",
 }
 
 RELIABILITY_COLOURS = {
-    "High":   "#10b981",
-    "Medium": "#f59e0b",
-    "Low":    "#ef4444",
+    "High":   "#15803D",
+    "Medium": "#B45309",
+    "Low":    "#B91C1C",
 }

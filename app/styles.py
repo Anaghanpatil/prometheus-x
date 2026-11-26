@@ -1,6 +1,11 @@
 """
 PROMETHEUS-X — Custom CSS Styles
-Provides the dark industrial dashboard aesthetic for the Streamlit application.
+Bright, high-contrast theme for the Streamlit application.
+
+Class names match the original app so that all components keep working.
+NOTE: fonts are applied to text elements only. Never set font-family on
+`span` or `i` — Streamlit draws its icons (upload, arrows, etc.) with an icon
+font in those elements, and overriding it prints the icon names as words.
 """
 
 
@@ -8,304 +13,172 @@ def get_main_css() -> str:
     """Return the complete CSS stylesheet for the PROMETHEUS-X dashboard."""
     return """
 <style>
-/* ─── Google Fonts ─────────────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
 
-/* ─── Root Variables ───────────────────────────────────────────── */
 :root {
-    --bg-primary:    #0a0e1a;
-    --bg-secondary:  #0d1526;
-    --bg-card:       #111827;
-    --bg-card-hover: #1a2235;
-    --border-subtle: #1e2d45;
-    --border-accent: #0ea5e9;
-    --cyan:          #06b6d4;
-    --cyan-light:    #22d3ee;
-    --blue:          #3b82f6;
-    --blue-light:    #60a5fa;
-    --green:         #10b981;
-    --amber:         #f59e0b;
-    --red:           #ef4444;
-    --text-primary:  #f1f5f9;
-    --text-secondary:#94a3b8;
-    --text-muted:    #475569;
-    --radius:        10px;
-    --radius-lg:     16px;
-    --shadow:        0 4px 24px rgba(0,0,0,0.5);
+    --bg:        #F4F7FB;
+    --surface:   #FFFFFF;
+    --ink:       #0F172A;
+    --slate:     #475569;
+    --line:      #D5DEEA;
+    --blue:      #1D4ED8;
+    --blue-dk:   #1E40AF;
+    --blue-bg:   #E8F0FF;
+    --green:     #15803D;  --green-bg: #DCFCE7;
+    --red:       #B91C1C;  --red-bg:   #FEE2E2;
+    --amber:     #B45309;  --amber-bg: #FEF3C7;
+    --radius:    12px;
+    --shadow:    0 1px 2px rgba(15,23,42,.06), 0 4px 16px rgba(15,23,42,.06);
 }
 
-/* ─── App Container ────────────────────────────────────────────── */
-.stApp {
-    background-color: var(--bg-primary) !important;
-    font-family: 'Inter', sans-serif !important;
-    color: var(--text-primary) !important;
+/* ─── Base (text elements only — no span / i) ──────────────────── */
+.stApp, .stApp p, .stApp label, .stApp li, .stApp h1, .stApp h2, .stApp h3, .stApp h4,
+.stApp button, .stApp input, .stApp textarea {
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
 }
+.stApp { background: var(--bg) !important; color: var(--ink) !important; }
+.main .block-container { padding: 1.5rem 2rem 3rem 2rem !important; max-width: 1240px !important; }
 
-/* ─── Hide Streamlit Branding ───────────────────────────────────── */
-#MainMenu { visibility: hidden; }
-footer    { visibility: hidden; }
-header    { visibility: hidden; }
+/* Keep the header (it holds the sidebar toggle); hide only deploy chrome */
+.stDeployButton, #MainMenu, footer { visibility: hidden; }
+[data-testid="stHeader"] { background: transparent !important; }
 
 /* ─── Sidebar ──────────────────────────────────────────────────── */
 [data-testid="stSidebar"] {
-    background: var(--bg-secondary) !important;
-    border-right: 1px solid var(--border-subtle) !important;
+    background: var(--surface) !important;
+    border-right: 1px solid var(--line) !important;
 }
-[data-testid="stSidebar"] .stMarkdown { color: var(--text-secondary) !important; }
+[data-testid="stSidebar"] .stMarkdown { color: var(--slate) !important; }
 
-/* ─── Main Content Padding ─────────────────────────────────────── */
-.main .block-container {
-    padding: 1.5rem 2rem 3rem 2rem !important;
-    max-width: 1200px !important;
-}
-
-/* ─── Hero Header ──────────────────────────────────────────────── */
+/* ─── Hero ─────────────────────────────────────────────────────── */
 .prometheus-hero {
-    background: linear-gradient(135deg, #0a0e1a 0%, #0d1a3a 50%, #0a1628 100%);
-    border: 1px solid var(--border-subtle);
-    border-top: 2px solid var(--cyan);
-    border-radius: var(--radius-lg);
-    padding: 2.5rem 2rem 2rem 2rem;
-    margin-bottom: 1.5rem;
-    position: relative;
-    overflow: hidden;
-}
-.prometheus-hero::before {
-    content: '';
-    position: absolute;
-    top: -60px; right: -60px;
-    width: 200px; height: 200px;
-    background: radial-gradient(circle, rgba(6,182,212,0.08) 0%, transparent 70%);
-    border-radius: 50%;
+    background: linear-gradient(135deg, #FFFFFF 0%, #EAF1FF 100%);
+    border: 1px solid var(--line);
+    border-left: 8px solid var(--blue);
+    border-radius: 16px;
+    padding: 1.8rem 2rem;
+    margin-bottom: 1.4rem;
+    box-shadow: var(--shadow);
 }
 .prometheus-hero h1 {
-    font-size: 2.4rem !important;
-    font-weight: 700 !important;
-    letter-spacing: 0.08em !important;
-    background: linear-gradient(90deg, var(--cyan-light), var(--blue-light));
-    -webkit-background-clip: text !important;
-    -webkit-text-fill-color: transparent !important;
-    background-clip: text !important;
-    margin: 0 0 0.3rem 0 !important;
+    font-size: 2.3rem !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.04em !important;
+    color: var(--blue) !important;
+    margin: 0.2rem 0 0.2rem 0 !important;
+    padding: 0 !important;
 }
-.prometheus-hero .subtitle {
-    font-size: 0.95rem;
-    color: var(--text-secondary);
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    font-weight: 500;
-}
+.prometheus-hero .subtitle { font-size: 1rem; font-weight: 600; color: var(--ink); letter-spacing: 0.04em; }
 .prometheus-hero .badge {
-    display: inline-block;
-    background: rgba(6,182,212,0.12);
-    border: 1px solid rgba(6,182,212,0.3);
-    color: var(--cyan);
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    padding: 3px 10px;
-    border-radius: 20px;
-    margin-top: 0.8rem;
-    text-transform: uppercase;
+    display: inline-block; background: var(--blue); color: #fff;
+    font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em;
+    padding: 4px 12px; border-radius: 20px; text-transform: uppercase;
 }
+.prometheus-hero div[style] { color: var(--slate) !important; }
 
-/* ─── Section Label ────────────────────────────────────────────── */
+/* ─── Tabs ─────────────────────────────────────────────────────── */
+[data-baseweb="tab-list"] { gap: 0.4rem; border-bottom: 2px solid var(--line); }
+button[data-baseweb="tab"] { height: 3.3rem; padding: 0 1.5rem !important; background: transparent !important; border-radius: 10px 10px 0 0 !important; }
+button[data-baseweb="tab"] p { font-size: 1.1rem !important; font-weight: 700 !important; color: var(--slate) !important; }
+button[data-baseweb="tab"][aria-selected="true"] { background: var(--surface) !important; }
+button[data-baseweb="tab"][aria-selected="true"] p { color: var(--blue) !important; }
+[data-baseweb="tab-highlight"] { background: var(--blue) !important; height: 4px !important; }
+
+/* ─── Section label ────────────────────────────────────────────── */
 .section-label {
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--cyan);
-    margin-bottom: 0.6rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+    font-size: 1.15rem; font-weight: 800; color: var(--ink);
+    margin: 1.2rem 0 0.8rem 0; display: flex; align-items: center; gap: 0.8rem;
 }
-.section-label::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: var(--border-subtle);
-}
+.section-label::before { content: ''; width: 6px; height: 1.3rem; background: var(--blue); border-radius: 3px; }
+.section-label::after  { content: ''; flex: 1; height: 1px; background: var(--line); }
 
 /* ─── Cards ────────────────────────────────────────────────────── */
 .px-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius);
-    padding: 1.4rem 1.6rem;
-    margin-bottom: 1rem;
-    box-shadow: var(--shadow);
-    transition: border-color 0.2s;
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 1.2rem 1.4rem; margin-bottom: 1rem; box-shadow: var(--shadow);
 }
-.px-card:hover { border-color: rgba(6,182,212,0.25); }
-.px-card-title {
-    font-size: 0.78rem;
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--text-secondary);
-    margin-bottom: 0.8rem;
-}
+.px-card-title { font-size: 0.95rem; font-weight: 700; color: var(--ink); margin-bottom: 0.6rem; }
 
-/* ─── Metric Tiles ─────────────────────────────────────────────── */
-.metric-row {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 0.8rem;
-    margin-bottom: 1rem;
-}
+/* ─── Metric tiles (custom) ────────────────────────────────────── */
+.metric-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0.9rem; margin-bottom: 1rem; }
 .metric-tile {
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius);
-    padding: 1rem;
-    text-align: center;
+    background: var(--surface); border: 1px solid var(--line); border-top: 4px solid var(--blue);
+    border-radius: var(--radius); padding: 1rem 1.1rem; text-align: left; box-shadow: var(--shadow);
 }
-.metric-tile .metric-label {
-    font-size: 0.68rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--text-muted);
-    margin-bottom: 0.4rem;
-}
-.metric-tile .metric-value {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    font-family: 'JetBrains Mono', monospace;
-}
-.metric-tile .metric-unit {
-    font-size: 0.7rem;
-    color: var(--text-secondary);
-}
+.metric-tile .metric-label { font-size: 0.85rem; font-weight: 700; color: var(--slate); margin-bottom: 0.3rem; }
+.metric-tile .metric-value { font-size: 1.7rem; font-weight: 800; color: var(--ink); font-family: 'JetBrains Mono', monospace; }
+.metric-tile .metric-unit  { font-size: 0.8rem; color: var(--slate); margin-top: 0.15rem; }
 
-/* ─── Verdict Badges ───────────────────────────────────────────── */
-.verdict-normal    { color: var(--green);  border-color: rgba(16,185,129,0.4); background: rgba(16,185,129,0.08); }
-.verdict-anomaly   { color: var(--red);    border-color: rgba(239,68,68,0.4);  background: rgba(239,68,68,0.08);  }
-.verdict-uncertain { color: var(--amber);  border-color: rgba(245,158,11,0.4); background: rgba(245,158,11,0.08); }
-.verdict-review    { color: var(--amber);  border-color: rgba(245,158,11,0.6); background: rgba(245,158,11,0.14); }
-.verdict-unavail   { color: var(--text-muted); border-color: var(--border-subtle); background: rgba(71,85,105,0.08); }
+/* ─── Native st.metric ─────────────────────────────────────────── */
+[data-testid="stMetric"] {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 0.8rem 1rem; box-shadow: var(--shadow);
+}
+[data-testid="stMetricLabel"] p { color: var(--slate) !important; font-weight: 600 !important; font-size: 0.85rem !important; }
+[data-testid="stMetricValue"] { color: var(--ink) !important; font-weight: 800 !important; }
 
+/* ─── Verdict ──────────────────────────────────────────────────── */
 .verdict-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    border: 1px solid;
-    border-radius: 8px;
-    padding: 0.5rem 1.2rem;
-    font-size: 1rem;
-    font-weight: 700;
-    letter-spacing: 0.06em;
+    display: inline-flex; align-items: center; gap: 0.7rem; border: 2px solid; border-radius: 12px;
+    padding: 0.7rem 1.6rem; font-size: 1.5rem; font-weight: 800; letter-spacing: 0.02em;
 }
+.verdict-normal    { color: var(--green); border-color: var(--green); background: var(--green-bg); }
+.verdict-anomaly   { color: var(--red);   border-color: var(--red);   background: var(--red-bg);   }
+.verdict-uncertain { color: var(--amber); border-color: var(--amber); background: var(--amber-bg); }
+.verdict-review    { color: var(--amber); border-color: var(--amber); background: var(--amber-bg); }
+.verdict-unavail   { color: var(--slate); border-color: var(--line);  background: #EEF2F7; }
 
-/* ─── Status Indicators ────────────────────────────────────────── */
-.status-dot {
-    display: inline-block;
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    margin-right: 6px;
-}
-.status-green  { background: var(--green); box-shadow: 0 0 6px var(--green); }
-.status-amber  { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
-.status-red    { background: var(--red);   box-shadow: 0 0 6px var(--red);   }
-.status-gray   { background: var(--text-muted); }
+/* ─── Status dots ──────────────────────────────────────────────── */
+.status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
+.status-green { background: var(--green); } .status-amber { background: var(--amber); }
+.status-red   { background: var(--red); }   .status-gray  { background: #94A3B8; }
 
-/* ─── Warning Banner ───────────────────────────────────────────── */
+/* ─── Banners ──────────────────────────────────────────────────── */
 .shift-warning {
-    background: rgba(245,158,11,0.08);
-    border: 1px solid rgba(245,158,11,0.4);
-    border-left: 4px solid var(--amber);
-    border-radius: var(--radius);
-    padding: 0.9rem 1.2rem;
-    color: var(--amber);
-    font-size: 0.88rem;
-    font-weight: 500;
-    margin-bottom: 1rem;
+    background: var(--amber-bg); border: 1px solid #F2C46B; border-left: 6px solid var(--amber);
+    border-radius: var(--radius); padding: 0.9rem 1.2rem; color: #78350F; font-size: 0.95rem; margin-bottom: 1rem;
 }
-
-/* ─── Info / Disclaimer Banner ─────────────────────────────────── */
 .info-banner {
-    background: rgba(59,130,246,0.07);
-    border: 1px solid rgba(59,130,246,0.25);
-    border-left: 4px solid var(--blue);
-    border-radius: var(--radius);
-    padding: 0.9rem 1.2rem;
-    color: var(--blue-light);
-    font-size: 0.84rem;
-    margin-bottom: 1rem;
+    background: var(--blue-bg); border: 1px solid #B6CCFF; border-left: 6px solid var(--blue);
+    border-radius: var(--radius); padding: 0.9rem 1.2rem; color: #1E3A8A; font-size: 0.92rem; margin-bottom: 1rem;
 }
 .placeholder-banner {
-    background: rgba(6,182,212,0.07);
-    border: 1px dashed rgba(6,182,212,0.3);
-    border-radius: var(--radius);
-    padding: 1.2rem;
-    color: var(--cyan);
-    font-size: 0.84rem;
-    text-align: center;
-    margin-bottom: 1rem;
+    background: var(--surface); border: 2px dashed var(--line); border-radius: var(--radius);
+    padding: 1.2rem; color: var(--slate); font-size: 0.92rem; text-align: center; margin-bottom: 1rem;
 }
 
-/* ─── Upload Zone ──────────────────────────────────────────────── */
-[data-testid="stFileUploader"] {
-    background: var(--bg-card) !important;
-    border: 1px dashed var(--border-accent) !important;
-    border-radius: var(--radius) !important;
+/* ─── Upload zone (box only; leave the button and icon alone) ──── */
+[data-testid="stFileUploader"] section {
+    background: var(--blue-bg) !important; border: 2px dashed var(--blue) !important; border-radius: var(--radius) !important;
 }
 
 /* ─── Buttons ──────────────────────────────────────────────────── */
-.stButton > button {
-    background: linear-gradient(135deg, #0ea5e9, #3b82f6) !important;
-    color: white !important;
-    border: none !important;
-    border-radius: 8px !important;
-    font-weight: 600 !important;
-    letter-spacing: 0.05em !important;
-    padding: 0.6rem 1.6rem !important;
-    transition: opacity 0.2s !important;
-    font-family: 'Inter', sans-serif !important;
+.stButton > button, .stDownloadButton > button, [data-testid="stFormSubmitButton"] > button {
+    min-height: 2.9rem; border-radius: 10px; font-weight: 700; font-size: 1rem;
+    border: 2px solid var(--blue); background: var(--surface); color: var(--blue);
 }
-.stButton > button:hover { opacity: 0.9 !important; }
-.stButton > button[kind="secondary"] {
-    background: var(--bg-card) !important;
-    border: 1px solid var(--border-subtle) !important;
-    color: var(--text-secondary) !important;
+.stButton > button:hover, .stDownloadButton > button:hover, [data-testid="stFormSubmitButton"] > button:hover {
+    background: var(--blue-bg); border-color: var(--blue-dk); color: var(--blue-dk);
+}
+.stButton > button[kind="primary"], button[data-testid="stBaseButton-primary"],
+[data-testid="stFormSubmitButton"] > button[kind="primaryFormSubmit"] {
+    background: var(--blue) !important; color: #fff !important; border-color: var(--blue) !important;
+}
+.stButton > button[kind="primary"]:hover, button[data-testid="stBaseButton-primary"]:hover { background: var(--blue-dk) !important; }
+.stButton > button:disabled, button[data-testid="stBaseButton-primary"]:disabled {
+    background: #E2E8F0 !important; color: #64748B !important; border-color: #CBD5E1 !important;
 }
 
-/* ─── Selectbox / Slider ───────────────────────────────────────── */
-[data-testid="stSelectbox"] > div > div,
-[data-testid="stSlider"]    > div {
-    background: var(--bg-card) !important;
+/* ─── Inputs, tables, expanders ────────────────────────────────── */
+[data-testid="stWidgetLabel"] p { font-weight: 700 !important; color: var(--ink) !important; }
+[data-baseweb="select"] > div, [data-baseweb="textarea"], [data-baseweb="input"] {
+    background: var(--surface) !important; border-radius: 10px !important;
 }
-
-/* ─── Tables ───────────────────────────────────────────────────── */
-[data-testid="stDataFrame"] { border-radius: var(--radius) !important; }
-thead tr th {
-    background: var(--bg-secondary) !important;
-    color: var(--text-secondary) !important;
-    font-size: 0.72rem !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.1em !important;
-}
-
-/* ─── Expander ─────────────────────────────────────────────────── */
-[data-testid="stExpander"] {
-    background: var(--bg-card) !important;
-    border: 1px solid var(--border-subtle) !important;
-    border-radius: var(--radius) !important;
-}
-
-/* ─── Divider ──────────────────────────────────────────────────── */
-hr { border-color: var(--border-subtle) !important; }
-
-/* ─── Code / Mono ──────────────────────────────────────────────── */
-code {
-    font-family: 'JetBrains Mono', monospace !important;
-    background: rgba(6,182,212,0.08) !important;
-    color: var(--cyan-light) !important;
-    padding: 2px 6px !important;
-    border-radius: 4px !important;
-}
+[data-testid="stDataFrame"] { border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+[data-testid="stExpander"] { background: var(--surface) !important; border: 1px solid var(--line) !important; border-radius: var(--radius) !important; }
+[data-testid="stImage"] img { border-radius: 10px; border: 1px solid var(--line); }
+[data-testid="stCaptionContainer"] { color: var(--slate) !important; }
+hr { border-color: var(--line) !important; }
+code { font-family: 'JetBrains Mono', monospace; background: var(--blue-bg) !important; color: var(--blue-dk) !important; padding: 2px 6px; border-radius: 4px; }
 </style>
 """

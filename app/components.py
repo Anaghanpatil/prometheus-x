@@ -24,7 +24,7 @@ def render_hero():
         <div class="badge">Industrial AI Inspection Platform</div>
         <h1>PROMETHEUS-X</h1>
         <div class="subtitle">Open-Set Industrial Anomaly Detection</div>
-        <div style="margin-top:1rem;font-size:0.82rem;color:#64748b;max-width:680px;line-height:1.6;">
+        <div style="margin-top:1rem;font-size:0.82rem;color:#475569;max-width:680px;line-height:1.6;">
             PatchCore-based visual inspection system with anomaly localisation,
             severity estimation, confidence calibration, and distribution shift detection.
             All results are decision support — factory safety policy governs final disposition.
@@ -51,11 +51,11 @@ def model_status_badge(model_ready: bool, backend_ready: bool):
     st.sidebar.markdown(f"""
     <div style="margin-bottom:0.3rem;">
         <span class="status-dot {m_col}"></span>
-        <span style="font-size:0.8rem;color:#94a3b8;">{m_txt}</span>
+        <span style="font-size:0.8rem;color:#475569;">{m_txt}</span>
     </div>
     <div>
         <span class="status-dot {b_col}"></span>
-        <span style="font-size:0.8rem;color:#94a3b8;">{b_txt}</span>
+        <span style="font-size:0.8rem;color:#475569;">{b_txt}</span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -124,8 +124,8 @@ def render_metrics(
     confidence: Optional[float],
     reliability: str,
 ):
-    sev_col  = SEVERITY_COLOURS.get(severity, "#94a3b8")
-    rel_col  = RELIABILITY_COLOURS.get(reliability, "#94a3b8")
+    sev_col  = SEVERITY_COLOURS.get(severity, "#475569")
+    rel_col  = RELIABILITY_COLOURS.get(reliability, "#475569")
     conf_txt = f"{confidence:.1%}" if confidence is not None else "N/A"
     score_txt = format_score(score)
 
@@ -133,7 +133,7 @@ def render_metrics(
     <div class="metric-row">
         <div class="metric-tile">
             <div class="metric-label">Anomaly Score</div>
-            <div class="metric-value" style="color:#22d3ee;">{score_txt}</div>
+            <div class="metric-value" style="color:#1D4ED8;">{score_txt}</div>
             <div class="metric-unit">Raw model output</div>
         </div>
         <div class="metric-tile">
@@ -143,7 +143,7 @@ def render_metrics(
         </div>
         <div class="metric-tile">
             <div class="metric-label">Calibration Signal</div>
-            <div class="metric-value" style="color:#60a5fa;">{conf_txt}</div>
+            <div class="metric-value" style="color:#1D4ED8;">{conf_txt}</div>
             <div class="metric-unit">Heuristic, not probability</div>
         </div>
         <div class="metric-tile">
@@ -173,7 +173,7 @@ def render_recommendation(action: str):
     st.markdown(f"""
     <div class="px-card">
         <div class="px-card-title">Recommended Action</div>
-        <div style="font-size:0.92rem;color:#f1f5f9;line-height:1.6;">{action}</div>
+        <div style="font-size:0.92rem;color:#0F172A;line-height:1.6;">{action}</div>
         <div class="info-banner" style="margin-top:0.8rem;margin-bottom:0;">
             This is decision support only. Factory safety policy governs final product disposition.
         </div>
@@ -189,7 +189,7 @@ def render_model_unavailable():
         <div style="font-size:1.1rem;font-weight:600;margin-bottom:0.5rem;">
             PatchCore Model Unavailable
         </div>
-        <div style="font-size:0.84rem;color:#94a3b8;line-height:1.6;">
+        <div style="font-size:0.84rem;color:#475569;line-height:1.6;">
             Check that the existing checkpoint and project virtual environment are available.
         </div>
     </div>
@@ -229,7 +229,7 @@ def render_feedback_form(last_inspection_id: Optional[str]) -> Optional[Dict]:
     Returns a dict with feedback data if submitted, else None.
     """
     section_label("Inspection Feedback")
-    with st.expander("Submit Inspection Feedback", expanded=False):
+    with st.expander("Submit Inspection Feedback", expanded=True):
         st.markdown("""
         <div class="info-banner">
             Your feedback helps validate model performance and improve future versions.

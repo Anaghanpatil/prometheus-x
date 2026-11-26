@@ -1,3 +1,4 @@
+
 """Combine calibrated anomaly and reliability signals into an action."""
 
 from dataclasses import asdict, dataclass
@@ -19,49 +20,80 @@ def combine_decision(
     shifted: bool,
     reliability: str,
     quality_issues=None,
+    model_prediction=None,
 ) -> DecisionResult:
-    """Return a conservative action without treating anomalies as confirmed defects."""
+    """
+    Prefer calibrated evidence.
+    Use PatchCore's binary prediction when calibration is uncertain.
+    Shift and reliability signals produce warnings, not automatic rejection.
+    """
+
     issues = list(quality_issues or [])
     rationale = []
 
     if shifted:
-        rationale.append("Input distribution shift detected")
-    if reliability.lower() == "low":
-        rationale.append("Automated result reliability is low")
+        rationale.append("Distribution shift detected; prediction should be interpreted cautiously.")
+
+    if str(reliability).lower() == "low":
+        rationale.append("Reliability is low; prediction confidence may be reduced.")
+
     if issues:
-        rationale.extend(f"Image quality issue: {issue}" for issue in issues)
+        rationale.extend(
+            f"Image quality warning: {issue}" for issue in issues
+        )
+
+    verdict = str(calibration_verdict or "").strip().lower()
+
+    # First preference: calibrated prediction.
+    if verdict == "normal":
+        action = "NORMAL"
+        rationale.append("Anomaly score is within the calibrated normal range.")
+
+    elif verdict == "defect":
+        action = "DEFECT"
+        rationale.append("Anomaly score exceeds the calibrated defect threshold.")
+
+    # Fallback: use the existing PatchCore binary prediction.
+    elif verdict == "uncertain" or verdict in ("", "none", "unavailable"):
+        prediction = str(model_prediction or "").strip().lower()
+
+        if prediction in ("defect", "anomaly detected", "anomaly", "true", "1"):
+            action = "DEFECT"
+        elif prediction in ("normal", "false", "0"):
+            action = "NORMAL"
+        else:
+            raise ValueError(
+                "Calibration is uncertain or unavailable and no valid "
+                "PatchCore binary prediction was supplied."
+            )
+
+        rationale.append(
+            "Calibration was uncertain or unavailable; "
+            "the existing PatchCore binary prediction was used as fallback."
+        )
+
+    else:
+        raise ValueError(
+            f"Unsupported calibration verdict: {calibration_verdict!r}"
+        )
+
+    if action == "DEFECT":
+        note = (
+            "PatchCore indicates anomaly evidence. "
+            "Inspect the localization and severity; this is not physical-defect confirmation."
+        )
+    else:
+        note = (
+            "The image is classified as normal by the available prediction evidence. "
+            "Continue following factory inspection policy."
+        )
 
     if shifted or reliability.lower() == "low" or issues:
-        return DecisionResult(
-            action="MANUAL REVIEW REQUIRED",
-            manual_review_required=True,
-            rationale=rationale,
-            note="Automated evidence is not reliable enough for an automatic disposition.",
-        )
+        note += " Caution: acquisition or image-quality warnings were detected."
 
-    verdict = calibration_verdict.strip().lower()
-    if verdict == "uncertain":
-        return DecisionResult(
-            action="UNCERTAIN",
-            manual_review_required=True,
-            rationale=["Anomaly score falls in the calibrated uncertainty band"],
-            note="Review the image and localization before disposition.",
-        )
-
-    if verdict == "defect":
-        return DecisionResult(
-            action="DEFECT",
-            manual_review_required=False,
-            rationale=["Anomaly score exceeds the normal-reference decision threshold"],
-            note="Anomaly evidence is present; this is not physical-defect confirmation or safety certification.",
-        )
-
-    if verdict == "normal":
-        return DecisionResult(
-            action="NORMAL",
-            manual_review_required=False,
-            rationale=["Anomaly score is consistent with the normal reference"],
-            note="Decision support only; follow factory inspection policy.",
-        )
-
-    raise ValueError(f"Unsupported calibration verdict: {calibration_verdict!r}")
+    return DecisionResult(
+        action=action,
+        manual_review_required=False,
+        rationale=rationale,
+        note=note,
+    )
